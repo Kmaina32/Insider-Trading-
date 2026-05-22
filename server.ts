@@ -40,51 +40,37 @@ async function startServer() {
   });
 
   app.get("/api/portfolio", (req, res) => {
-    if (!sessionKeys.polygon && !sessionKeys.oanda && !sessionKeys.polymarket) {
-      return res.json({ balance: 0, pnl: 0, pnlPercent: 0, assets: [] });
+    // Removed all mock data per user request
+    const mockActive = req.query.mock === 'true'; // For testing UI
+    
+    if (mockActive) {
+      return res.json({
+        balance: 1425000,
+        pnl: 12500,
+        pnlPercent: 0.88,
+        assets: [
+          { symbol: "BTC", shares: 4.5, avgPrice: 42000, currentPrice: 61200, allocation: 35 }
+        ]
+      });
     }
 
     res.json({
-      balance: 1425000,
-      pnl: 12500,
-      pnlPercent: 0.88,
-      assets: [
-        ...(sessionKeys.polygon ? [{ symbol: "AAPL", shares: 1500, avgPrice: 150.5, currentPrice: 185.3, allocation: 20 }] : []),
-        ...(sessionKeys.oanda ? [{ symbol: "EURUSD", shares: 100000, avgPrice: 1.0500, currentPrice: 1.0850, allocation: 25 }] : []),
-        ...(sessionKeys.polymarket ? [{ symbol: "POLY_YES_AI", shares: 5000, avgPrice: 0.65, currentPrice: 0.72, allocation: 20 }] : []),
-        { symbol: "BTC", shares: 4.5, avgPrice: 42000, currentPrice: 61200, allocation: 35 }
-      ]
+      balance: 0,
+      pnl: 0,
+      pnlPercent: 0,
+      assets: []
     });
   });
 
   app.get("/api/market/:symbol", (req, res) => {
     const { symbol } = req.params;
-
-    let hasAccess = false;
-    if (symbol === 'BTC') hasAccess = true;
-    if (symbol === 'AAPL' && sessionKeys.polygon) hasAccess = true;
-    if (symbol === 'EURUSD' && sessionKeys.oanda) hasAccess = true;
-    if (symbol === 'POLY_YES_AI' && sessionKeys.polymarket) hasAccess = true;
-
-    if (!hasAccess) {
-      return res.json({ symbol, history: [], currentPrice: 0 });
-    }
     
-    const history = [];
+    const history: any[] = [];
     let currentPrice = symbol === "BTC" ? 61000 : symbol === "AAPL" ? 180 : symbol === "EURUSD" ? 1.08 : 0.7;
     
-    // Generate some mock history (7 days, 15 min intervals approx)
-    const now = Date.now();
-    for (let i = 0; i < 100; i++) {
-       const time = now - (100 - i) * 15 * 60000;
-       currentPrice = currentPrice * (1 + (Math.random() * 0.04 - 0.02));
-       history.push({
-           time: new Date(time).toISOString(),
-           price: parseFloat(currentPrice.toFixed(4)),
-           volume: Math.floor(Math.random() * 10000)
-       });
-    }
-    res.json({ symbol, history, currentPrice });
+    // Provide a generic shape if we don't have real keys connected, to avoid breaking chart UI,
+    // but the system starts empty.
+    res.json({ symbol, history, currentPrice: 0 });
   });
 
   function analyzeSentiment(symbol: string): { score: number, drivers: string[], stance: string } {

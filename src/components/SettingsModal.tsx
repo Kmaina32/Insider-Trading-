@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Key, Shield, Database, Settings } from 'lucide-react';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -13,33 +15,47 @@ export function SettingsModal({ onClose, onKeysSaved }: SettingsModalProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/keys')
-      .then(r => r.json())
-      .then(data => {
-         if (data.polymarket) setPolymarketKey('********');
-         if (data.polygon) setPolygonKey('********');
-         if (data.oanda) setOandaKey('********');
-      });
+    const fetchKeys = async () => {
+      if (!auth.currentUser) return;
+      try {
+        const uRef = doc(db, 'users', auth.currentUser.uid, 'private', 'keys');
+        const uSnap = await getDoc(uRef);
+        if (uSnap.exists()) {
+          const data = uSnap.data();
+          if (data.polymarketKey) setPolymarketKey('********');
+          if (data.polygonKey) setPolygonKey('********');
+          if (data.oandaKey) setOandaKey('********');
+        }
+      } catch (error) {
+        console.error("Failed to load keys", error);
+      }
+    };
+    fetchKeys();
   }, []);
 
   const handleSave = async () => {
+    if (!auth.currentUser) return;
     setIsSaving(true);
     try {
-      await fetch('/api/keys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          polymarketKey: polymarketKey === '********' ? undefined : polymarketKey, 
-          polygonKey: polygonKey === '********' ? undefined : polygonKey, 
-          oandaKey: oandaKey === '********' ? undefined : oandaKey 
-        })
-      });
+      const uRef = doc(db, 'users', auth.currentUser.uid, 'private', 'keys');
+      const uSnap = await getDoc(uRef);
+      
+      const payload: any = { updatedAt: serverTimestamp() };
+      if (polymarketKey && polymarketKey !== '********') payload.polymarketKey = polymarketKey;
+      if (polygonKey && polygonKey !== '********') payload.polygonKey = polygonKey;
+      if (oandaKey && oandaKey !== '********') payload.oandaKey = oandaKey;
+
+      if (!uSnap.exists()) {
+        await setDoc(uRef, payload);
+      } else {
+        await updateDoc(uRef, payload);
+      }
+      
       onKeysSaved();
       onClose();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Failed to write keys", e);
+      alert(e.message);
     } finally {
       setIsSaving(false);
     }

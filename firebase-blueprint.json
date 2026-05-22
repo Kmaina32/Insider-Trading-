@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "displayName": { "$ref": "#/entities/String128" },
+        "email": { "$ref": "#/entities/String128" },
+        "photoURL": { "$ref": "#/entities/String512" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "UserKeys": {
+      "title": "UserKeys",
+      "description": "User API keys for platforms",
+      "type": "object",
+      "properties": {
+        "polymarketKey": { "$ref": "#/entities/String128" },
+        "polygonKey": { "$ref": "#/entities/String128" },
+        "oandaKey": { "$ref": "#/entities/String128" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "String128": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "String512": {
+      "type": "string",
+      "maxLength": 512
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/User",
+      "description": "Public user profiles"
+    },
+    "/users/{userId}/private/keys": {
+      "schema": "#/entities/UserKeys",
+      "description": "Private API keys for the user"
+    }
+  }
+}

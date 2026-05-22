@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, AreaSeries } from 'lightweight-charts';
 import { format } from 'date-fns';
 import { MarketHistory } from '../types';
 
@@ -41,7 +41,7 @@ export function AssetChart({ data, symbol }: AssetChartProps) {
     
     chartRef.current = chart;
 
-    const lineSeries = chart.addAreaSeries({
+    const lineSeries = chart.addSeries(AreaSeries, {
       lineColor: strokeColor,
       topColor: `${strokeColor}40`,
       bottomColor: `${strokeColor}00`,
