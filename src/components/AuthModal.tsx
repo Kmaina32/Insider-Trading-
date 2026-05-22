@@ -12,7 +12,11 @@ export function AuthModal({ onLogin }: { onLogin: () => void }) {
       await loginWithGoogle();
       onLogin();
     } catch (e: any) {
-      setError(e.message || 'Authentication failed');
+      if (e.code === 'auth/popup-closed-by-user' || e.message?.includes('popup-closed-by-user')) {
+        setError(null);
+      } else {
+        setError(e.message || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }
