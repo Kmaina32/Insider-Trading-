@@ -36,9 +36,9 @@ service cloud.firestore {
     function isValidUserKeys(data, userId) {
       return isOwner(userId)
         && data.keys().hasAll(['updatedAt'])
-        && (!('polymarketKey' in data) || (data.polymarketKey is string && data.polymarketKey.size() <= 128))
-        && (!('polygonKey' in data) || (data.polygonKey is string && data.polygonKey.size() <= 128))
-        && (!('oandaKey' in data) || (data.oandaKey is string && data.oandaKey.size() <= 128));
+        && (!('polymarketKey' in data) || (data.polymarketKey is string && data.polymarketKey.size() <= 512))
+        && (!('polygonKey' in data) || (data.polygonKey is string && data.polygonKey.size() <= 512))
+        && (!('oandaKey' in data) || (data.oandaKey is string && data.oandaKey.size() <= 512));
     }
 
     match /users/{userId} {
@@ -62,8 +62,7 @@ service cloud.firestore {
     }
 
     match /users/{userId}/private/keys {
-      allow get: if isOwner(userId);
-      allow list: if false;
+      allow read: if isOwner(userId);
       
       allow create: if isOwner(userId)
                     && isValidId(userId)

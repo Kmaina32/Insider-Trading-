@@ -10,7 +10,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { PolymarketView } from './components/PolymarketView';
 import { auth, db, logout } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
@@ -41,19 +41,49 @@ export default function App() {
                updatedAt: serverTimestamp()
              });
            }
-           
-           const keysRef = doc(db, 'users', u.uid, 'private', 'keys');
-           const keysSnap = await getDoc(keysRef);
-           if (keysSnap.exists()) {
-             setUserKeys(keysSnap.data());
-           }
         } catch (e) {
            console.error("Failed to initialize user doc", e);
         }
+      } else {
+        setUserKeys({});
       }
     });
     return unsub;
   }, []);
+
+  // Listen for API key updates in real-time
+  useEffect(() => {
+    if (!user) {
+      setUserKeys({});
+      return;
+    }
+    const keysRef = doc(db, 'users', user.uid, 'private', 'keys');
+    const unsub = onSnapshot(keysRef, (snap) => {
+      if (snap.exists()) {
+        setUserKeys(snap.data());
+      } else {
+        setUserKeys({});
+      }
+    }, (err) => {
+      console.error("Failed to subscribe to API keys:", err);
+    });
+    return unsub;
+  }, [user]);
+
+  const fetchMarketData = (symbol: string) => {
+    const oandaParam = userKeys.oandaKey ? `&oandaKey=${encodeURIComponent(userKeys.oandaKey)}` : '';
+    const polygonParam = userKeys.polygonKey ? `&polygonKey=${encodeURIComponent(userKeys.polygonKey)}` : '';
+    const polymarketParam = userKeys.polymarketKey ? `&polymarketKey=${encodeURIComponent(userKeys.polymarketKey)}` : '';
+    
+    fetch(`/api/market/${symbol}?_t=${Date.now()}${oandaParam}${polygonParam}${polymarketParam}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.history) {
+          setMarketData(data.history);
+        }
+      })
+      .catch(err => console.error("Error fetching market data:", err));
+  };
 
   const fetchAllData = async () => {
     fetch('/api/portfolio')
@@ -61,17 +91,6 @@ export default function App() {
       .then(data => setPortfolio(data));
 
     fetchMarketData(activeSymbol);
-    
-    // Also re-fetch keys if Settings just closed
-    if (user) {
-      try {
-         const keysRef = doc(db, 'users', user.uid, 'private', 'keys');
-         const keysSnap = await getDoc(keysRef);
-         if (keysSnap.exists()) {
-           setUserKeys(keysSnap.data());
-         }
-      } catch (e) { console.error(e); }
-    }
   };
 
   useEffect(() => {
@@ -79,13 +98,7 @@ export default function App() {
     fetchAllData();
     const interval = setInterval(() => fetchMarketData(activeSymbol), 5000);
     return () => clearInterval(interval);
-  }, [activeSymbol, user]);
-
-  const fetchMarketData = (symbol: string) => {
-    fetch(`/api/market/${symbol}`)
-      .then(res => res.json())
-      .then(data => setMarketData(data.history));
-  }
+  }, [activeSymbol, user, userKeys]);
 
   // Click outside to close mobile menu
   useEffect(() => {

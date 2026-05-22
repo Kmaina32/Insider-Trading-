@@ -13,6 +13,7 @@ export function SettingsModal({ onClose, onKeysSaved }: SettingsModalProps) {
   const [polygonKey, setPolygonKey] = useState('');
   const [oandaKey, setOandaKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchKeys = async () => {
@@ -26,8 +27,9 @@ export function SettingsModal({ onClose, onKeysSaved }: SettingsModalProps) {
           if (data.polygonKey) setPolygonKey('********');
           if (data.oandaKey) setOandaKey('********');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load keys", error);
+        setError("Failed to load existing keys. Please check your network connection.");
       }
     };
     fetchKeys();
@@ -36,6 +38,7 @@ export function SettingsModal({ onClose, onKeysSaved }: SettingsModalProps) {
   const handleSave = async () => {
     if (!auth.currentUser) return;
     setIsSaving(true);
+    setError(null);
     try {
       const uRef = doc(db, 'users', auth.currentUser.uid, 'private', 'keys');
       const uSnap = await getDoc(uRef);
@@ -55,7 +58,7 @@ export function SettingsModal({ onClose, onKeysSaved }: SettingsModalProps) {
       onClose();
     } catch (e: any) {
       console.error("Failed to write keys", e);
-      alert(e.message);
+      setError(e.message || "Failed to save API keys. Please verify your Firestore permissions.");
     } finally {
       setIsSaving(false);
     }
@@ -73,6 +76,12 @@ export function SettingsModal({ onClose, onKeysSaved }: SettingsModalProps) {
             <X className="w-5 h-5" />
           </button>
         </div>
+        
+        {error && (
+          <div className="mx-4 mt-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center font-semibold">
+            {error}
+          </div>
+        )}
         
         <div className="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
              <div className="flex items-start gap-3 p-3 bg-slate-900/50 border border-slate-800 rounded-lg">
